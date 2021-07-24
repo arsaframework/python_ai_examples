@@ -1,0 +1,159 @@
+﻿# Thai crime law original file from website krisdika.
+# How to create Thai crime law input data as text file.
+# 	1. goto website https://www.krisdika.go.th/librarian/get?sysid=443287&ext=htm
+# 	2. select crime law latest link. 
+# 	3. click on website link (green world icon).
+# 	4. select all, copy and paste to any text editor.
+# 	5. save as text file utf-8
+# 	6. replace law_text_filename to file in 5.
+#	7. choose csv output filename at tok_filename.
+#	8. change UNIQUE token string that are start and end point.
+#		8.1 tok_start = "ประมวลกฎหมายอาญา"
+#		8.2 tok_end = "พระราชบัญญัติแก้ไขเพิ่มเติมประมวลกฎหมายอาญา พ.ศ. ๒๕๐๒[๑๕๓]"
+#	9. call py 001_text_tok_crime_law_to_csv.txt
+
+law_text_filename = "law_004_crime_thai.txt"
+f = open(law_text_filename, "r", encoding="utf-8", errors="ignore")
+
+# new token file
+tok_filename = law_text_filename+".csv"
+fp = open(tok_filename, "w", encoding="utf-8", errors="ignore")
+fp.close()
+
+print("Processing input: "+law_text_filename)
+
+def write_text(filename, str):
+	fp = open(filename, "a", encoding="utf-8", errors="ignore")
+	fp.write(str)
+	fp.close()
+
+def write_all():
+	global caption_line
+	caption_line = caption_line + "," + caption_set + "," + caption_type+ ","+caption_topic+"\n";
+	write_text(tok_filename, caption_line)
+
+def replace_num_thai_to_arabic(str):
+	thai_num = ["๐","๑","๒","๓","๔","๕","๖","๗","๘","๙"]
+	arabic_num = ["0","1","2","3","4","5","6","7","8","9"]
+	count = 0
+	for i in thai_num:
+		str = str.replace(thai_num[count], arabic_num[count])
+		count += 1
+	return str
+
+tok_start = "ประมวลกฎหมายอาญา"
+tok_end = "พระราชบัญญัติแก้ไขเพิ่มเติมประมวลกฎหมายอาญา พ.ศ. ๒๕๐๒[๑๕๓]"
+token_set = "ภาค"
+token_type = "ลักษณะ"
+token_topic = "หมวด"
+tokw = "มาตรา"
+
+caption_set = ""
+caption_type = ""
+caption_topic = ""
+caption_num = ""
+caption_line = ""
+write_text(tok_filename, "มาตรา, คำบรรยาย, ภาค, ลักษณะ, หมวด\n")
+
+state_break = -1
+state = -1
+count = 0
+for line in f:
+	line = line.strip()
+	if line == "":
+		continue
+
+	# start process
+	if state == -1:
+		sid = line.find(tok_start)
+		if sid == 0:
+			state = 0
+		else:
+			continue
+	# end process
+	sid = line.find(tok_end)
+	if sid == 0:
+		break
+
+	
+	sid = line.find(token_set)
+	if sid == 0:
+		if state == 1:
+			write_all()
+		caption_set = line
+		state_break = 2
+		continue
+	elif state_break == 2:
+		caption_set = caption_set + " " + line
+		state = 0
+		state_break = -1
+		continue
+
+	sid = line.find(token_type)
+	if sid == 0:
+		if state == 1:
+			write_all()
+		caption_type = line
+		state_break = 3
+		continue
+	elif state_break == 3:
+		caption_type = caption_type + " " + line
+		state = 0
+		state_break = -1
+		continue
+
+	sid = line.find(token_topic)
+	if sid == 0:
+		if state == 1:
+			write_all()
+		caption_topic = line
+		state_break = 4
+		continue
+	elif state_break == 4:
+		caption_topic = caption_topic + " " + line
+		state = 0
+		state_break = -1
+		continue
+
+	sid = line.find(tokw)
+	if state==1:
+		if sid == -1:
+			sid1 = line.find(token_set)
+			sid2 = line.find(token_type)
+			sid3 = line.find(token_topic)
+			if sid1 == 0 or sid2 == 0 or sid3 == 0:
+				sid = 0
+		if sid==0:
+			state = 0
+			write_all()
+		else:			
+			line = line.replace(",", " ")
+			caption_line = caption_line + " " + line
+
+	if state == 0 and sid == 0:
+		state = 1
+
+		line_new = line
+		bk_open = line.find("[")
+		bk_close = line.find("]")
+		if bk_open != -1 and bk_close != -1:
+			line_new = line[:bk_open] + line[bk_close+1:]
+		
+		line_new = line_new.replace(",", " ")
+		line_space = line_new.split(" ")
+		caption_num = line_space[1]
+
+		caption_tok = line_space[0] + " " + line_space[1]
+		line_new = line_new.replace(caption_tok, "")
+		line_new = line_new.strip()
+
+		caption_num = replace_num_thai_to_arabic(caption_num)
+
+		sid1 = caption_num.find("/")
+		if sid1 == -1:
+			count += 1
+
+		caption_line = caption_num + "," + line_new
+		
+print("Success converting to csv: "+tok_filename)
+f.close()

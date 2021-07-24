@@ -1,0 +1,61 @@
+# https://google.github.io/mediapipe/solutions/face_detection.html
+import cv2
+import mediapipe as mp
+from sys import platform
+
+mpFace = mp.solutions.face_detection
+Faces = mpFace.FaceDetection()
+mpDraw = mp.solutions.drawing_utils
+
+#FaceKeyPoint
+#RIGHT_EYE = 0
+#LEFT_EYE = 1
+#NOSE_TIP = 2
+#MOUTH_CENTER = 3
+#RIGHT_EAR_TRAGION = 4
+#LEFT_EAR_TRAGION = 5
+
+def text(buffer, x, y, str, size=.7, color=(255,255,255), thickness=2):
+    cv2.putText(buffer, str ,(int(x),int(y)), cv2.FONT_HERSHEY_COMPLEX, size, color, thickness)
+
+video = cv2.VideoCapture(0)
+w = 640
+h = 480
+video.set(3, w) # width
+video.set(4, h) # height
+
+while True:
+    ret, img = video.read()
+    
+    if platform == "darwin":
+        # OS X
+        img = cv2.flip(img, 1) # flip horizontal
+    elif platform == "win32":
+        # Windows...
+        img = cv2.flip(img, 0) # flip vertical
+        img = cv2.flip(img, 1) # flip horizontal
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = Faces.process(img)
+    if results.detections:
+            h, w, c = img.shape
+            count = 0
+            for detection in results.detections: #how many faces detected
+                count += 1
+                mpDraw.draw_detection(img, detection)
+                le_point = mpFace.get_key_point( detection, mpFace.FaceKeyPoint.LEFT_EYE)
+                re_point = mpFace.get_key_point( detection, mpFace.FaceKeyPoint.RIGHT_EYE)
+                nose_point = mpFace.get_key_point( detection, mpFace.FaceKeyPoint.NOSE_TIP)
+                le_point.x,le_point.y = le_point.x*w,le_point.y*h;
+                re_point.x,re_point.y = re_point.x*w,re_point.y*h;
+                nose_point.x,nose_point.y = nose_point.x*w,nose_point.y*h;
+
+                #cv2.circle(img, (int(nose_point.x),int(nose_point.y)), 20, (255,0,0), cv2.FILLED)
+                text(img,le_point.x,le_point.y,"left eye "+str(count))
+                text(img,re_point.x,re_point.y,"right eye "+str(count))
+                text(img,nose_point.x,nose_point.y,"nose "+str(count))
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    cv2.imshow("color", img)
+
+    if cv2.waitKey(5)&0xFF == ord('q'):
+        break

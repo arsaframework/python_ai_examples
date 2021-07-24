@@ -1,0 +1,101 @@
+# https://google.github.io/mediapipe/solutions/face_detection.html
+import cv2
+import mediapipe as mp
+from sys import platform
+
+mpPose = mp.solutions.pose
+Pose = mpPose.Pose(static_image_mode=False)
+mpDraw = mp.solutions.drawing_utils
+
+def text(buffer, x, y, str, size=.7, color=(255,255,255), thickness=2):
+    cv2.putText(buffer, str ,(int(x),int(y)), cv2.FONT_HERSHEY_COMPLEX, size, color, thickness)
+
+def getdistance(x1, y1, x2, y2):
+    result= ((((x2 - x1 )**2) + ((y2-y1)**2) )**0.5)
+    return result
+
+video = cv2.VideoCapture(0)
+w = 1280
+h = 720
+video.set(3, w) # width
+video.set(4, h) # height
+
+score_l = 0
+score_r = 0
+state_l = -1
+state_r = -1
+
+while True:
+    ret, img = video.read()
+    
+    if platform == "darwin":
+        # OS X
+        img = cv2.flip(img, 1) # flip horizontal
+        pass
+    elif platform == "win32":
+        # Windows...
+        img = cv2.flip(img, 0) # flip vertical
+        img = cv2.flip(img, 1) # flip horizontal
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = Pose.process(img)
+    dist = 999
+    if results.pose_landmarks:
+        h, w, c = img.shape
+        mpDraw.draw_landmarks(img, results.pose_landmarks, mpPose.POSE_CONNECTIONS)
+        rshould_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_SHOULDER].x * w
+        rshould_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_SHOULDER].y * h
+        relbow_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_ELBOW].x * w
+        relbow_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_ELBOW].y * h
+        rw_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_WRIST].x * w
+        rw_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.RIGHT_WRIST].y * h
+        dist = getdistance(rshould_x,rshould_y, rw_x, rw_y)
+        #text(img, rshould_x, rshould_y, "Dist: "+str(dist))
+        
+        dist_ready = getdistance(rshould_x,rshould_y, relbow_x, relbow_y)
+        #print(dist_ready)
+        if dist_ready > 100:
+            if state_l==-1:
+                if relbow_y>rshould_y:
+                    state_l = 0
+            elif state_l == 0:
+                if dist<70:
+                    score_l += 1
+                    state_l = 1
+            elif state_l == 1:
+                if dist>200:
+                    state_l = -1
+
+        rshould_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_SHOULDER].x * w
+        rshould_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_SHOULDER].y * h
+        relbow_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_ELBOW].x * w
+        relbow_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_ELBOW].y * h
+        rw_x = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_WRIST].x * w
+        rw_y = results.pose_landmarks.landmark[mpPose.PoseLandmark.LEFT_WRIST].y * h
+        dist = getdistance(rshould_x,rshould_y, rw_x, rw_y)
+        #text(img, rshould_x, rshould_y, "Dist: "+str(dist))
+        
+        dist_ready = getdistance(rshould_x,rshould_y, relbow_x, relbow_y)
+        #print(dist_ready)
+        if dist_ready > 100:
+            if state_r==-1:
+                if relbow_y>rshould_y:
+                    state_r = 0
+            elif state_r == 0:
+                if dist<100:
+                    score_r += 1
+                    state_r = 1
+            elif state_r == 1:
+                if dist>200:
+                    state_r = -1
+
+    text(img, 10, 40, "Score: "+str(score_l), color=(255,0,0), size=1.5)
+    text(img, 10, 100, "State: "+str(state_l), color=(255,0,0))
+    text(img, 600, 40, "Score: "+str(score_r), color=(255,0,0), size=1.5)
+    text(img, 700, 100, "State: "+str(state_r), color=(255,0,0))
+
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    cv2.imshow("color", img)
+
+    if cv2.waitKey(5)&0xFF == ord('q'):
+        break

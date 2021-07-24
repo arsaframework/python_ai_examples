@@ -1,0 +1,79 @@
+#===================================
+# macos
+#===================================
+# 0. install homebrew https://docs.brew.sh/Installation
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+# 1. install homebrew tesseract lib https://tesseract-ocr.github.io/tessdoc/Installation.html
+#   brew install tesseract
+# 2. find location after install
+#   brew info tesseract
+# 2.1 replace var in python code with tesseract folder
+#   pytesseract.pytesseract.tesseract_cmd = [tesseract_folder]/bin/tesseract
+# 2.2  install thai ocr from https://tesseract-ocr.github.io/tessdoc/Data-Files
+#   Thai Data Files for Version 4.00 (November 29, 2016)
+#   https://github.com/tesseract-ocr/tessdata/raw/4.00/tha.traineddata
+# 2.3 copy file tha.traineddata to tesseract folder [tesseract_folder]/share/tessdata
+#   2.3.1 open terminal and going to tha.traineddata folder
+#   2.3.2 cp tha.traineddata [tesseract_folder]/share/tessdata
+# 3. install pymupdf
+#   pip install pymupdf
+# 4. install opencv
+#   pip install opencv
+# 5. install pytesseract
+#   pip install pytesseract
+
+#===================================
+# window
+#===================================
+# 0. install tesseract window birary from https://tesseract-ocr.github.io/tessdoc/Home.html#binaries
+# May choose 64 or 32 bit compatible with your window os
+# 1. find location after install maybe
+#   C:/Program Files/Tesseract-OCR/
+# 2.1 replace var in python code with tesseract folder
+#   pytesseract.pytesseract.tesseract_cmd = [tesseract_folder]/tesseract.exe
+# 2.2  install thai ocr from https://tesseract-ocr.github.io/tessdoc/Data-Files
+#   Thai Data Files for Version 4.00 (November 29, 2016)
+#   https://github.com/tesseract-ocr/tessdata/raw/4.00/tha.traineddata
+# 2.3 copy file tha.traineddata to tesseract folder [tesseract_folder]/share/tessdata
+# 3. install pymupdf
+#   pip install pymupdf
+# 4. install opencv
+#   pip install opencv
+# 5. install pytesseract
+#   pip install pytesseract
+
+import fitz
+import cv2 
+import pytesseract
+from sys import platform
+
+if platform == "darwin":
+    # OS X
+    pytesseract.pytesseract.tesseract_cmd = '/usr/local/Cellar/tesseract/4.1.1/bin/tesseract'
+elif platform == "win32":
+    # Windows...
+    pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
+
+pdf_filename = "thai_gov.pdf"
+doc = fitz.open(pdf_filename)
+print("Processing..."+pdf_filename)
+
+mat = m = fitz.Matrix(3, 3) #scale of pdf
+page = doc[0]
+pix = page.get_pixmap(matrix=mat)
+pix.save("temp.png")
+doc.close()
+
+print("Processing OCR...")
+custom_config = r'--oem 3 --psm 6' #smooth analyze
+img = cv2.imread('temp.png')
+text = pytesseract.image_to_string(img, lang="tha+eng", config=custom_config)
+text = text.replace(' ', '')
+
+filename = pdf_filename+".ocr.txt"
+f = open(filename, "w", encoding='utf-8')
+f.write(text)
+f.close()
+print("Success, Check file: "+filename)
+
+

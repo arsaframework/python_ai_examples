@@ -1,0 +1,17 @@
+# pip install pdfplumber
+import pdfplumber
+
+pdf_filename = "153004.PDF"
+print("Input file: "+pdf_filename)
+
+pdf = pdfplumber.open(pdf_filename)
+first_page = pdf.pages[0] #first page
+text = first_page.extract_text()
+
+text_filename = pdf_filename+".txt"
+f = open(text_filename, "w", encoding="utf-8")
+f.write(text)
+f.close()
+
+print("Output file: "+text_filename)
+

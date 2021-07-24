@@ -1,0 +1,35 @@
+import cv2
+import numpy as np
+from sys import platform
+
+mat5 = np.ones((3,3),np.uint8)
+print(mat5)
+
+video = cv2.VideoCapture(0)
+video.set(3, 640) # width
+video.set(4, 480) # height
+
+while True:
+	ret, img = video.read()
+	if platform == "darwin":
+		# OS X
+		img = cv2.flip(img, 1) # flip horizontal
+	elif platform == "win32":
+		# Windows...
+		img = cv2.flip(img, 0) # flip vertical
+		img = cv2.flip(img, 1) # flip horizontal
+
+	img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #grayscale
+	img_blur = cv2.GaussianBlur(img_gray, (7,7), 0) #blur
+	img_edge = cv2.Canny(img_blur, 50, 50 ) #edge detection, number is bias
+	img_smooth_border = cv2.dilate(img_edge, mat5, iterations=1) #smooth border, iterations is bias
+	img_smooth_border2 = cv2.erode(img_smooth_border, mat5, iterations=1) #smooth border, iterations is bias
+	cv2.imshow("video", img) 
+	cv2.imshow("gray", img_gray) 
+	cv2.imshow("blur", img_blur) 
+	cv2.imshow("edge", img_edge) 
+	cv2.imshow("dilate", img_smooth_border) 
+	cv2.imshow("erode", img_smooth_border2) 
+	
+	if cv2.waitKey(1)&0xFF == ord('q'):
+		break

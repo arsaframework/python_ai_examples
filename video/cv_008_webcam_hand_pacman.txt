@@ -1,0 +1,251 @@
+import cv2
+import numpy as np
+import mediapipe as mp
+from sys import platform
+
+class FindHands():
+    def __init__(self, detection_con=0.5, tracking_con=0.5):
+        self.mpHands = mp.solutions.mediapipe.python.solutions.hands
+        self.hands = self.mpHands.Hands(min_detection_confidence=detection_con, min_tracking_confidence=tracking_con)
+        self.mpDraw = mp.solutions.mediapipe.python.solutions.drawing_utils
+    
+    def getPosition(self, img, indexes, hand_no=0, draw=True, img2 = None):
+        lst = []
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(imgRGB)
+        if results.multi_hand_landmarks:
+            if len(results.multi_hand_landmarks) >= hand_no+1:
+                for id, lm in enumerate(results.multi_hand_landmarks[hand_no].landmark):
+                    for index in indexes:
+                        if id == index:
+                            h, w, c = img.shape
+                            x, y = int(lm.x*w), int(lm.y*h)
+                            lst.append((x,y))
+                if draw:
+                    self.mpDraw.draw_landmarks(img2, results.multi_hand_landmarks[hand_no], self.mpHands.HAND_CONNECTIONS)
+        return lst
+
+    def index_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (6,8), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+    
+    def middle_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (10,12), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+    def ring_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (14,16), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+    def little_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (18,20), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+    def index_finger_up2(self, lst):
+        if len(lst) < 21:
+            return False
+        if lst[7][1] >= lst[8][1]:
+            return True
+        elif lst[7][1] < lst[8][1]:
+            return False
+
+    def middle_finger_up2(self, lst):
+        if len(lst) < 21:
+            return False
+        if lst[11][1] >= lst[12][1]:
+            return True
+        elif lst[11][1] < lst[12][1]:
+            return False
+
+    def ring_finger_up2(self, lst):
+        if len(lst) < 21:
+            return False
+        if lst[15][1] >= lst[16][1]:
+            return True
+        elif lst[15][1] < lst[16][1]:
+            return False
+
+    def little_finger_up2(self, lst):
+        if len(lst) < 21:
+            return False
+        if lst[19][1] >= lst[20][1]:
+            return True
+        elif lst[19][1] < lst[20][1]:
+            return False
+
+video = cv2.VideoCapture(0)
+w = 640
+h = 480
+video.set(3, w) # width
+video.set(4, h) # height
+
+detector = FindHands()
+
+#mouse pos
+mx = 0
+my = 0
+
+# https://stackoverflow.com/questions/33065834/how-to-detect-if-a-point-is-contained-within-a-bounding-rect-opecv-python
+def pointInRect(px,py, x, y, w,h):
+    #cv2.rectangle( img, (x, y), (x+w,y+h), (200,0,0), 3)
+    logic = x < px < x+w and y < py < y+h
+    return logic
+
+def getdistance(x1, y1, x2, y2):
+    result= ((((x2 - x1 )**2) + ((y2-y1)**2) )**0.5)
+    return result
+
+def gethand21_info(lst):
+        xx, yy = zip(*lst)
+        min_x = min(xx); min_y = min(yy); max_x = max(xx); max_y = max(yy)
+        bbox = [(min_x, min_y), (max_x, min_y), (max_x, max_y), (min_x, max_y)]
+        cx = min_x+int((max_x-min_x)*0.5)
+        cy = min_y+int((max_y-min_y)*0.5)
+        return (cx,cy), bbox
+
+def init_pacman(x, y, size, maxx, maxy, step):  
+    pacman_info = []
+    for i in range(maxx):
+        for j in range(maxy):
+            px = x+(i*(size+step))
+            py = y+(j*(size+step))
+            pacman_info.append([px,py,size,True])
+    return pacman_info
+
+def reset_pacman():
+    global score
+    score = 0
+    for pac in pacinfo:        
+        pac[3] = True
+
+showbg = False
+score = 0
+pacinfo = init_pacman(45, 80, 15, 10, 5, 45)
+img2 = np.zeros((h, w, 3), np.uint8)
+img2[:] = (255, 255, 255)
+
+while True:
+
+    ret, img = video.read()
+    if platform == "darwin":
+        # OS X
+        img = cv2.flip(img, 1) # flip horizontal
+    elif platform == "win32":
+        # Windows...
+        img = cv2.flip(img, 0) # flip vertical
+        img = cv2.flip(img, 1) # flip horizontal
+    
+
+    if showbg == True:
+        img2=img
+    else:
+        img2[:] = (255, 255, 255)
+    hand1_temp = detector.getPosition(img, range(21), draw=True, img2=img2)
+
+    height, width, channels = img.shape
+    if len(hand1_temp)>=21:
+        if 'hand1_recover_active' in locals() and hand1_recover_active == True:
+            hct, bboxt = gethand21_info(hand1_temp)
+            hc, bbox = gethand21_info(hand1_recover)
+            dis_delta = getdistance(hc[0], hc[1], hct[0], hct[1])
+            if dis_delta < 50:
+                hand1_positions = hand1_temp
+                hand1_recover_active = False
+                print("Recover hand done!")
+            else:
+                hand1_recover = hand1_temp
+
+        if 'hand1_positions' in locals():
+            hct, bboxt = gethand21_info(hand1_temp)
+            hc, bbox = gethand21_info(hand1_positions)
+            dis_delta = getdistance(hc[0], hc[1], hct[0], hct[1])
+            if dis_delta < 50:
+                hand1_positions = hand1_temp
+            else:
+                print("Recover hand: "+str(dis_delta))
+                hand1_recover = hand1_temp
+                hand1_recover_active = True
+        else:
+            hand1_positions = hand1_temp
+
+
+    col = False
+   
+    if 'hand1_positions' in locals() and len(hand1_temp)>=21:
+        #for pos in hand1_positions:
+        #    cv2.circle(img, pos, 5, (0,255,0), cv2.FILLED)
+
+        hc, bbox = gethand21_info(hand1_positions)
+        cv2.rectangle( img2, bbox[0],bbox[2], (200,0,0), 3)
+        dist = getdistance(hc[0], hc[1], hand1_positions[12][0], hand1_positions[12][1])
+        if dist>95:
+            col=True
+
+    #reset
+    if 'hand1_positions' in locals():
+        hc, bbox = gethand21_info(hand1_positions)
+        reset_bbox = [[20,410],[120,460]]
+        cv2.rectangle( img2, reset_bbox[0],reset_bbox[1], (200,0,0), -1)
+        cv2.putText(img2, "Reset" ,(reset_bbox[0][0]+15,reset_bbox[0][1]+30), cv2.FONT_HERSHEY_COMPLEX, .7, (255,255,255), 2)
+
+        bg_show_bbox = [[160+20,410],[160+120,460]]
+        cv2.rectangle( img2, bg_show_bbox[0],bg_show_bbox[1], (200,0,0), -1)
+        cv2.putText(img2, "BGShow" ,(bg_show_bbox[0][0]+5,bg_show_bbox[0][1]+30), cv2.FONT_HERSHEY_COMPLEX, .7, (255,255,255), 2)
+
+        bg_hide_bbox = [[320+20,410],[320+120,460]]
+        cv2.rectangle( img2, bg_hide_bbox[0],bg_hide_bbox[1], (200,0,0), -1)
+        cv2.putText(img2, "BGHide" ,(bg_hide_bbox[0][0]+10,bg_hide_bbox[0][1]+30), cv2.FONT_HERSHEY_COMPLEX, .7, (255,255,255), 2)
+
+        dist = getdistance(hc[0], hc[1], hand1_positions[12][0], hand1_positions[12][1])
+        if 'bbox' in locals() and dist < 40:
+            if pointInRect(reset_bbox[0][0]+int((reset_bbox[1][0]-reset_bbox[0][0])*0.5), reset_bbox[0][1]+int((reset_bbox[1][1]-reset_bbox[0][1])*0.5), bbox[0][0],bbox[0][1], bbox[2][0]-bbox[0][0],bbox[2][1]-bbox[0][1]) == True:
+                reset_pacman()
+
+            if pointInRect(bg_show_bbox[0][0]+int((bg_show_bbox[1][0]-bg_show_bbox[0][0])*0.5), bg_show_bbox[0][1]+int((bg_show_bbox[1][1]-bg_show_bbox[0][1])*0.5), bbox[0][0],bbox[0][1], bbox[2][0]-bbox[0][0],bbox[2][1]-bbox[0][1]) == True:
+                showbg = True
+
+            if pointInRect(bg_hide_bbox[0][0]+int((bg_hide_bbox[1][0]-bg_hide_bbox[0][0])*0.5), bg_hide_bbox[0][1]+int((bg_hide_bbox[1][1]-bg_hide_bbox[0][1])*0.5), bbox[0][0],bbox[0][1], bbox[2][0]-bbox[0][0],bbox[2][1]-bbox[0][1]) == True:
+                showbg = False
+
+    count = 0
+    for pac in pacinfo:
+        count += 1
+        if 'bbox' in locals() and col == True and pac[3] == True:
+            if pointInRect(pac[0], pac[1], bbox[0][0],bbox[0][1], bbox[2][0]-bbox[0][0],bbox[2][1]-bbox[0][1]) == True:
+                pac[3] = False
+                score += 10
+
+        if pac[3] == True:
+            cv2.circle(img2, (pac[0],pac[1]), pac[2], (0,0,255), cv2.FILLED)
+
+    cv2.putText(img2, "Score: "+str(score) ,(10, 20), cv2.FONT_HERSHEY_COMPLEX, .7, (255,0,0), 2)
+    if score >= 500:
+        cv2.putText(img2, "You Win!" ,(200, 200), cv2.FONT_HERSHEY_COMPLEX, 1.7, (255,0,0), 2)
+    cv2.imshow("normal", img2) 
+
+    if cv2.waitKey(1)&0xFF == ord('q'):
+	    break

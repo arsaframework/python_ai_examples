@@ -1,0 +1,142 @@
+import cv2
+import mediapipe as mp
+from sys import platform
+
+class FindHands():
+    def __init__(self, detection_con=0.5, tracking_con=0.5):
+        self.mpHands = mp.solutions.mediapipe.python.solutions.hands
+        self.hands = self.mpHands.Hands(min_detection_confidence=detection_con, min_tracking_confidence=tracking_con)
+        self.mpDraw = mp.solutions.mediapipe.python.solutions.drawing_utils
+    
+    def getPosition(self, img, indexes, hand_no=0, draw=True):
+        lst = []
+        imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(imgRGB)
+        if results.multi_hand_landmarks:
+            if len(results.multi_hand_landmarks) >= hand_no+1:
+                for id, lm in enumerate(results.multi_hand_landmarks[hand_no].landmark):
+                    for index in indexes:
+                        if id == index:
+                            h, w, c = img.shape
+                            x, y = int(lm.x*w), int(lm.y*h)
+                            lst.append((x,y))
+                if draw:
+                    self.mpDraw.draw_landmarks(img, results.multi_hand_landmarks[hand_no], self.mpHands.HAND_CONNECTIONS)
+        return lst
+
+    def index_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (6,8), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+        
+    def middle_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (10,12), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+    def ring_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (14,16), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+    def little_finger_up(self, img, hand_no=0):
+        pos = self.getPosition(img, (18,20), draw=False)
+        try:
+            if pos[0][1] >= pos[1][1]:
+                return True
+            elif pos[0][1] < pos[1][1]:
+                return False
+        except:
+            return "NO HAND FOUND"
+
+
+video = cv2.VideoCapture(0)
+w = 640
+h = 480
+video.set(3, w) # width
+video.set(4, h) # height
+
+detector = FindHands()
+
+mx = 0
+my = 0
+# mouse callback
+def mc(event, x, y, flags, params):
+	global mx
+	global my
+	mx = x
+	my = y
+
+# https://stackoverflow.com/questions/33065834/how-to-detect-if-a-point-is-contained-within-a-bounding-rect-opecv-python
+def pointInRect(px,py, x, y, w,h):
+	logic = x < px < x+w and y < py < y+h
+	return logic
+
+while True:
+    ret, img = video.read()
+    
+    if platform == "darwin":
+        # OS X
+        img = cv2.flip(img, 1) # flip horizontal
+    elif platform == "win32":
+        # Windows...
+        img = cv2.flip(img, 0) # flip vertical
+        img = cv2.flip(img, 1) # flip horizontal
+    
+    hand1_positions = detector.getPosition(img, range(21), draw=True)
+    if len(hand1_positions)>0:
+        xx, yy = zip(*hand1_positions)
+        min_x = min(xx); min_y = min(yy); max_x = max(xx); max_y = max(yy)
+        bbox = [(min_x, min_y), (max_x, min_y), (max_x, max_y), (min_x, max_y)]
+        cv2.rectangle( img, bbox[0],bbox[2], (200,0,0), 3)
+    if detector.index_finger_up(img) == False:
+        mx = min_x+int((max_x-min_x)*0.5)
+        my = min_y+int((max_y-min_y)*0.5)
+    #cv2.circle(img, (mx,my), 20, (0,255,0), cv2.FILLED)
+    #print(bbox)
+    #for pos in hand1_positions:
+        #cv2.circle(img, pos, 5, (0,255,0), cv2.FILLED)
+    #if detector.index_finger_up(img) == False:
+        #cv2.putText(img, "Index Down" ,(10,30), cv2.FONT_HERSHEY_COMPLEX, .7, (255,0,0), 2)
+
+    # top left
+    ret = pointInRect(mx, my, 0,0, int(w*0.5),int(h*0.5) )
+    if ret == True:
+        cv2.rectangle( img, (0,0), (int(w*0.5),int(h*0.5)), (255,0,0), -1)
+
+    # top right
+    ret = pointInRect(mx, my, int(w*0.5),0, w,int(h*0.5) )
+    if ret == True:
+        cv2.rectangle( img, (int(w*0.5),0), (w,int(h*0.5)), (0,255,0), -1)
+
+    # button left
+    ret = pointInRect(mx, my, 0,int(h*0.5), int(w*0.5),h )
+    if ret == True:
+        cv2.rectangle( img, (0,int(h*0.5)), (int(w*0.5),h), (0,0,255), -1)
+
+    # buttom right
+    ret = pointInRect(mx, my, int(w*0.5),int(h*0.5), w,h )
+    if ret == True:
+        cv2.rectangle( img, (int(w*0.5),int(h*0.5)), (w,h), (255,255,0), -1)
+
+
+    cv2.imshow("normal", img) 
+    #cv2.setMouseCallback("normal",mc) # set mouse callback in opencv
+
+    if cv2.waitKey(1)&0xFF == ord('q'):
+        break

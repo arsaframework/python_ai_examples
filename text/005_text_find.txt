@@ -1,0 +1,12 @@
+text_filename = "law_004_crime_thai.txt"
+f = open(text_filename, "r", encoding="utf-8", errors="ignore")
+
+count = 0
+for line in f:
+	ss = "มาตรา"
+
+	mm = line.find(ss)
+	if mm != -1:
+		count += 1
+print("File: %s , Find: %s, Founded: %d"%(text_filename,ss,count))
+f.close() 

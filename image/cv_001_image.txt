@@ -1,0 +1,5 @@
+import cv2
+
+img = cv2.imread("chars4_bg.jpg")
+cv2.imshow("color", img)
+cv2.waitKey(0)

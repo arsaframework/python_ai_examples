@@ -1,0 +1,39 @@
+import fitz
+import cv2 
+import pytesseract
+from sys import platform
+
+if platform == "darwin":
+    # OS X
+    pytesseract.pytesseract.tesseract_cmd = '/usr/local/Cellar/tesseract/4.1.1/bin/tesseract'
+elif platform == "win32":
+    # Windows...
+    pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
+
+pdf_filename = "153004.PDF"
+doc = fitz.open(pdf_filename)
+print("Processing..."+pdf_filename)
+
+filename = pdf_filename+".ocr.txt"
+f = open(filename, "w", encoding='utf-8')
+
+print("Processing OCR...")
+mat = m = fitz.Matrix(3, 3) #scale of pdf
+count = 0
+for page in doc:
+	count += 1
+
+	print("OCR page: "+str(count))
+	pix = page.get_pixmap(matrix=mat)
+	pix.save("temp.png")
+
+	custom_config = r'--oem 3 --psm 6'
+	img = cv2.imread('temp.png')
+	text = pytesseract.image_to_string(img, lang="tha+eng", config=custom_config)
+	text = text.replace(' ', '')
+	f.write("\n\n####################### Page: "+str(count)+" #######################\n\n")
+	f.write(text)
+
+f.close()
+doc.close()
+print("Success, Check file: "+filename)

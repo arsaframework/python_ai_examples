@@ -1,0 +1,35 @@
+import cv2
+import numpy as np
+
+idx = 0
+pts = [[0, 0], [0, 0], [0, 0], [0, 0]]
+
+# mouse callback
+def mc(event, x, y, flags, params):
+	global idx
+	if(event == cv2.EVENT_LBUTTONDOWN):
+		if(idx>=4):
+			idx = 0
+		pts[idx] = x,y
+		idx = idx + 1
+		print(pts)
+
+while True:
+	img = cv2.imread("book.jpg")
+	img = cv2.resize(img,(640,480))
+	img2 = img.copy()
+	for i in range(idx):
+		cv2.circle(img, (pts[i]), 10,(0,255,0),cv2.FILLED)
+	cv2.imshow("color", img)
+	cv2.setMouseCallback("color",mc) # set mouse callback in opencv
+
+	if idx == 4:
+		w, h = 320, 240
+		point1 = np.float32([pts[0],pts[1],pts[2],pts[3]])
+		point2 = np.float32([[0,0],[w,0],[0,h],[w,h]])
+		mat = cv2.getPerspectiveTransform(point1, point2)
+		img_result = cv2.warpPerspective(img2, mat, (w,h))
+		cv2.imshow("cropimg", img_result)
+
+	if cv2.waitKey(1)&0xFF == ord('q'):
+		break

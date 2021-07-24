@@ -1,0 +1,21 @@
+# pip install pdfplumber
+import pdfplumber
+
+pdf_filename = "153004.PDF"
+text_filename = pdf_filename+".txt"
+print("Input file: "+pdf_filename)
+
+pdf = pdfplumber.open(pdf_filename)
+f = open(text_filename, "w", encoding="utf-8")
+
+count = 0
+for page in pdf.pages:
+	count += 1
+	text = page.extract_text()
+	f.write("\n\n####################### Page: "+str(count)+" #######################\n\n")
+	f.write(text)
+	print("Written page: "+str(count))
+
+f.close()
+
+print("Output file: "+text_filename)

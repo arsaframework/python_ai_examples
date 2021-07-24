@@ -1,0 +1,49 @@
+#https://docs.opencv.org/4.5.2/dc/dc3/tutorial_py_matcher.html
+
+import cv2
+from sys import platform
+
+#features and matcher
+orb = cv2.ORB_create(nfeatures=1000)
+bf = cv2.BFMatcher()
+
+#trained
+img = cv2.imread("game_book/arsa_script.jpg")
+kp, des = orb.detectAndCompute(img, None)
+
+#open webcam device
+video = cv2.VideoCapture(0)
+w = 640
+h = 480
+video.set(3, w) # width
+video.set(4, h) # height
+
+while True:
+	ret, imgq = video.read() #read frame from webcam
+
+	if platform == "darwin":
+		# OS X
+		imgq = cv2.flip(imgq, 1) # flip horizontal
+	elif platform == "win32":
+		# Windows...
+		imgq = cv2.flip(imgq, 0) # flip vertical
+		#imgq = cv2.flip(imgq, 1) # flip horizontal
+
+	#get keypoints and descriptions
+	kpq, desq = orb.detectAndCompute(imgq, None)
+	
+	#try matching with BF algorithms
+	matches = bf.knnMatch(desq,des,k=2)
+	good = []
+	for m,n in matches:
+		if m.distance < 0.75*n.distance: #0.75 from opencv doc
+			good.append([m])
+
+	#draw debug image
+	img3 = cv2.drawMatchesKnn(imgq,kpq,img,kp,good,None,flags=2)
+	cv2.putText(img3, "Pt: "+str(len(good)) ,(10,30), cv2.FONT_HERSHEY_COMPLEX, .7, (255,0,0), 2)
+
+	cv2.imshow("imgage3", img3)
+
+	if cv2.waitKey(10)&0xFF == ord('q'):
+		break

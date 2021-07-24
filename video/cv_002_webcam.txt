@@ -1,0 +1,21 @@
+import cv2
+from sys import platform
+
+video = cv2.VideoCapture(0)
+video.set(3, 1280) # width
+video.set(4, 720) # height
+
+while True:
+	ret, img = video.read()
+	if platform == "darwin":
+		# OS X
+		img = cv2.flip(img, 1) # flip horizontal
+	elif platform == "win32":
+		# Windows...
+		img = cv2.flip(img, 0) # flip vertical
+		img = cv2.flip(img, 1) # flip horizontal
+
+	# img = cv2.resize(img,(1280,720)) # resize
+	cv2.imshow("video", img) 
+	if cv2.waitKey(1)&0xFF == ord('q'):
+		break

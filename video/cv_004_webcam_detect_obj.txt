@@ -1,0 +1,60 @@
+import cv2
+import numpy as np
+from sys import platform
+
+mat3 = np.ones((3,3))
+
+video = cv2.VideoCapture(0)
+video.set(3, 640) # width
+video.set(4, 480) # height
+
+def void(a):
+	pass
+
+cv2.namedWindow("params")
+cv2.resizeWindow("params", 320, 240)
+cv2.createTrackbar("value1", "params", 70, 255, void)
+cv2.createTrackbar("deep", "params", 1000, 5000, void)
+
+while True:
+	ret, img = video.read()
+	if platform == "darwin":
+		# OS X
+		img = cv2.flip(img, 1) # flip horizontal
+	elif platform == "win32":
+		# Windows...
+		img = cv2.flip(img, 0) # flip vertical
+		img = cv2.flip(img, 1) # flip horizontal
+
+	img_con = img.copy()
+	img_blur = cv2.GaussianBlur(img, (7,7), 1) #blur
+	img_gray = cv2.cvtColor(img_blur, cv2.COLOR_BGR2GRAY) #grayscale
+	
+
+	value1 = cv2.getTrackbarPos("value1", "params")
+
+	img_edge = cv2.Canny(img_gray, value1, value1 ) #edge detection, number is bias
+	img_smooth_border = cv2.dilate(img_edge, mat3, iterations=1) #smooth border, iterations is bias
+	contours, hierarchy = cv2.findContours(img_smooth_border, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+	deep = cv2.getTrackbarPos("deep", "params")
+	for cnt in contours:
+		area = cv2.contourArea(cnt)
+		if area>deep:
+			#cv2.drawContours(img_con, cnt, -1, (0,255,0), 3)
+			peri = cv2.arcLength(cnt,True)
+			approx = cv2.approxPolyDP(cnt, 0.02*peri, True)
+			x,y,w,h = cv2.boundingRect(approx)
+			cv2.rectangle(img_con, (x,y), (x+w,y+h), (0,255,0),5)
+			cv2.putText(img_con, "Pt: "+str(len(approx)) ,(x+w+20,y+20), cv2.FONT_HERSHEY_COMPLEX, .7, (0,255,0), 2)
+			cv2.putText(img_con, "Area: "+str(int(area)) ,(x+w+20,y+45), cv2.FONT_HERSHEY_COMPLEX, .7, (0,255,0), 2)
+
+	#cv2.imshow("video", img) 
+	#cv2.imshow("gray", img_gray) 
+	#cv2.imshow("blur", img_blur) 
+	#cv2.imshow("edge", img_edge) 
+	#cv2.imshow("dilate", img_smooth_border) 
+	cv2.imshow("contours", img_con) 
+	
+	if cv2.waitKey(10)&0xFF == ord('q'):
+		break
